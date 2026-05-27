@@ -1,0 +1,56 @@
+
+name: Automated Preprocessing Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'heart_raw/**'        # trigger kalau ada update dataset
+      - 'automate_*.py'       # trigger kalau ada update script
+  workflow_dispatch:           # bisa trigger manual dari GitHub UI
+
+jobs:
+  preprocessing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run actions/checkout@v3
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.12.7
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12.7'
+
+      - name: Check Env
+        run: |
+          python --version
+          pip --version
+          echo "Working directory: $(pwd)"
+          echo "Files present:"
+          ls -la
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Preprocessing
+        run: |
+          python automate_asymihoney.py
+
+      - name: Upload Preprocessing Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: heart-preprocessed
+          path: preprocessing/
+
+      - name: Commit preprocessed data back to repo
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add preprocessing/
+          git diff --staged --quiet || git commit -m "Auto: update preprocessed dataset [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
